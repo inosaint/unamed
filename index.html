@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Defense</title>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Phaser will inject its canvas into this container -->
+    <div id="game-container"></div>
+
+    <!-- ============================================================= -->
+    <!--  Script load order matters: we are NOT using ES modules.       -->
+    <!--  Dependencies must be loaded before the files that use them.   -->
+    <!-- ============================================================= -->
+
+    <!-- 1. Phaser 3 engine -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+
+    <!-- 2. Game namespace & constants -->
+    <script src="js/config.js"></script>
+
+    <!-- 3. Data files (static look-up tables) -->
+    <script src="js/data/dice.js"></script>
+    <script src="js/data/wordlist.js"></script>
+    <script src="js/data/mapdata.js"></script>
+    <script src="js/data/towerdata.js"></script>
+
+    <!-- 4. Core game objects -->
+    <script src="js/objects/Dictionary.js"></script>
+    <script src="js/objects/BoggleGrid.js"></script>
+    <script src="js/objects/Path.js"></script>
+    <script src="js/objects/Castle.js"></script>
+    <script src="js/objects/Tower.js"></script>
+    <script src="js/objects/Enemy.js"></script>
+    <script src="js/objects/Bullet.js"></script>
+
+    <!-- 5. Managers -->
+    <script src="js/managers/CurrencyManager.js"></script>
+    <script src="js/managers/WaveManager.js"></script>
+    <script src="js/managers/RoundManager.js"></script>
+
+    <!-- 6. Scenes (loaded in registration order) -->
+    <script src="js/scenes/BootScene.js"></script>
+    <script src="js/scenes/WordPhaseScene.js"></script>
+    <script src="js/scenes/BuildPhaseScene.js"></script>
+    <script src="js/scenes/WavePhaseScene.js"></script>
+
+    <!-- 7. Entry point – must be last -->
+    <script src="js/main.js"></script>
+</body>
+</html>
