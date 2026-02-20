@@ -26,15 +26,16 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
         // ---- Build the path ----
         this.path = new Game.Path(Game.MAP.path);
 
-        // ---- Draw the map ----
+        // ---- Background: tiled grass ----
+        for (var bgY = 0; bgY < Game.CONFIG.HEIGHT; bgY += 64) {
+            for (var bgX = 0; bgX < Game.CONFIG.WIDTH; bgX += 64) {
+                this.add.image(bgX + 32, bgY + 32, 'grass').setDepth(0);
+            }
+        }
+
+        // ---- Draw the path (above grass) ----
         this.mapGraphics = this.add.graphics();
-        this.mapGraphics.setDepth(0);
-
-        // Green background
-        this.mapGraphics.fillStyle(0x2d5a1b, 1);
-        this.mapGraphics.fillRect(0, 0, Game.CONFIG.WIDTH, Game.CONFIG.HEIGHT);
-
-        // Draw path
+        this.mapGraphics.setDepth(1);
         this.path.draw(this.mapGraphics);
 
         // ---- Castle ----
@@ -42,6 +43,7 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
         var castleHP = this.registry.get('castleHP');
         if (castleHP !== undefined && castleHP !== null) {
             this.castle.hp = castleHP;
+            this.castle._updateDamageFrame();
             this.castle.updateHPBar();
         }
 
@@ -70,25 +72,27 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
         this.gameOver = false;
 
         // ---- UI ----
+        var FONT = Game.CONFIG.FONT;
+
         this.roundText = this.add.text(16, 16, 'Round: ' + this.round, {
-            fontSize: '22px',
-            fontFamily: 'Arial',
+            fontSize: '11px',
+            fontFamily: FONT,
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 3
         }).setDepth(20);
 
-        this.castleHPText = this.add.text(16, 46, 'Castle HP: ' + this.castle.hp + '/' + this.castle.maxHp, {
-            fontSize: '18px',
-            fontFamily: 'Arial',
+        this.castleHPText = this.add.text(16, 40, 'Castle HP: ' + this.castle.hp + '/' + this.castle.maxHp, {
+            fontSize: '9px',
+            fontFamily: FONT,
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 3
         }).setDepth(20);
 
-        this.enemyCountText = this.add.text(16, 72, 'Enemies: 0/' + this.waveManager.getEnemyCount(), {
-            fontSize: '18px',
-            fontFamily: 'Arial',
+        this.enemyCountText = this.add.text(16, 60, 'Enemies: 0/' + this.waveManager.getEnemyCount(), {
+            fontSize: '9px',
+            fontFamily: FONT,
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 3
@@ -192,11 +196,11 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
             Game.CONFIG.HEIGHT / 2,
             'Wave Complete!',
             {
-                fontSize: '48px',
-                fontFamily: 'Arial',
+                fontSize: '24px',
+                fontFamily: Game.CONFIG.FONT,
                 color: '#ffdd00',
                 stroke: '#000000',
-                strokeThickness: 6
+                strokeThickness: 4
             }
         ).setOrigin(0.5).setDepth(30);
 
@@ -244,11 +248,11 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
             Game.CONFIG.HEIGHT / 2 - 80,
             'GAME OVER',
             {
-                fontSize: '64px',
-                fontFamily: 'Arial',
+                fontSize: '28px',
+                fontFamily: Game.CONFIG.FONT,
                 color: '#ff4444',
                 stroke: '#000000',
-                strokeThickness: 6
+                strokeThickness: 4
             }
         ).setOrigin(0.5).setDepth(51);
 
@@ -259,8 +263,8 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
             Game.CONFIG.HEIGHT / 2 - 10,
             'You survived ' + survivedRounds + ' round' + (survivedRounds !== 1 ? 's' : ''),
             {
-                fontSize: '28px',
-                fontFamily: 'Arial',
+                fontSize: '11px',
+                fontFamily: Game.CONFIG.FONT,
                 color: '#ffffff',
                 stroke: '#000000',
                 strokeThickness: 3
@@ -280,8 +284,8 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
             Game.CONFIG.HEIGHT / 2 + 70,
             'Play Again',
             {
-                fontSize: '26px',
-                fontFamily: 'Arial',
+                fontSize: '13px',
+                fontFamily: Game.CONFIG.FONT,
                 color: '#ffffff'
             }
         ).setOrigin(0.5).setDepth(52);

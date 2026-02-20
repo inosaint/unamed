@@ -4,7 +4,10 @@
  * The Boggle word-finding phase. Players swipe on a 4x4 letter grid
  * to form English words and earn currency before the build phase.
  *
- * This is the core novel mechanic of Word Defense.
+ * Layout: three-column design
+ *   Left:   Scoring reference table
+ *   Center: 4x4 Boggle grid (vertically centered)
+ *   Right:  Found words list
  */
 
 window.Game = window.Game || {};
@@ -15,92 +18,99 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         super({ key: 'WordPhaseScene' });
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  init – receive data from previous scene                            */
-    /* ------------------------------------------------------------------ */
     init(data) {
         // data may contain info from a previous round; we pull state
         // from the registry which persists across scenes.
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  create – build the entire word-finding UI                          */
-    /* ------------------------------------------------------------------ */
     create() {
         var self = this;
         var CFG = Game.CONFIG;
+        var FONT = CFG.FONT;
 
         // ---- State ----
         this.boggleGrid = new Game.BoggleGrid();
-        this.selectionPath = [];       // array of {row, col}
+        this.selectionPath = [];
         this.isDragging = false;
         this.foundWords = new Set();
-        this.foundWordsList = [];      // ordered array for display: {word, points}
+        this.foundWordsList = [];
         this.earnedCurrency = 0;
         this.timeRemaining = CFG.WORD_PHASE_TIME;
         this.phaseOver = false;
 
         // ---- Layout constants ----
         var TILE = CFG.TILE_SIZE;       // 64
-        var GAP = 8;                    // gap between tiles
-        var CELL = TILE + GAP;          // 72 total cell pitch
+        var GAP = 8;
+        var CELL = TILE + GAP;          // 72
         var GRID_COLS = CFG.GRID_SIZE;  // 4
         var GRID_ROWS = CFG.GRID_SIZE;  // 4
 
-        // Grid origin: centered horizontally, shifted up to leave room for words below
-        var gridWidth = GRID_COLS * CELL - GAP;
-        var gridHeight = GRID_ROWS * CELL - GAP;
-        this.gridStartX = CFG.WIDTH / 2 - gridWidth / 2;
-        this.gridStartY = 120;
+        var gridWidth = GRID_COLS * CELL - GAP;   // 280
+        var gridHeight = GRID_ROWS * CELL - GAP;  // 280
+
+        // Grid: centered horizontally, vertically centered in playfield below header
+        var headerH = 50;
+        this.gridStartX = Math.floor(CFG.WIDTH / 2 - gridWidth / 2);
+        this.gridStartY = Math.floor(headerH + (CFG.HEIGHT - headerH - gridHeight) / 2);
         this.cellPitch = CELL;
         this.tileSize = TILE;
 
-        // ---- Background ----
+        // ---- Background: tiled stone floor ----
         this.cameras.main.setBackgroundColor('#1a1a2e');
+        for (var bgY = 0; bgY < CFG.HEIGHT; bgY += 64) {
+            for (var bgX = 0; bgX < CFG.WIDTH; bgX += 64) {
+                this.add.image(bgX + 32, bgY + 32, 'floor_tile').setDepth(0).setAlpha(0.6);
+            }
+        }
+
+        // ---- Header bar background ----
+        var headerBg = this.add.graphics().setDepth(9);
+        headerBg.fillStyle(0x111122, 0.85);
+        headerBg.fillRect(0, 0, CFG.WIDTH, headerH);
+        headerBg.lineStyle(2, 0x4444aa, 0.4);
+        headerBg.lineBetween(0, headerH, CFG.WIDTH, headerH);
 
         // ---- Round display (top left) ----
         var round = this.registry.get('round') || 1;
-        this.add.text(20, 16, 'Round ' + round, {
-            fontFamily: 'monospace',
-            fontSize: '22px',
+        this.add.text(16, headerH / 2, 'Round ' + round, {
+            fontFamily: FONT,
+            fontSize: '10px',
             color: '#aaaacc'
-        });
+        }).setOrigin(0, 0.5).setDepth(10);
 
         // ---- Timer display (top center) ----
-        this.timerText = this.add.text(CFG.WIDTH / 2, 16, this._formatTime(this.timeRemaining), {
-            fontFamily: 'monospace',
-            fontSize: '36px',
-            color: '#ffffff',
-            fontStyle: 'bold'
-        }).setOrigin(0.5, 0);
+        this.timerText = this.add.text(CFG.WIDTH / 2, headerH / 2, this._formatTime(this.timeRemaining), {
+            fontFamily: FONT,
+            fontSize: '18px',
+            color: '#ffffff'
+        }).setOrigin(0.5, 0.5).setDepth(10);
 
-        // ---- Currency display (top right area) ----
-        this.currencyText = this.add.text(CFG.WIDTH - 20, 16, 'Earned: 0', {
-            fontFamily: 'monospace',
-            fontSize: '22px',
+        // ---- Currency display (top right) ----
+        this.currencyText = this.add.text(CFG.WIDTH - 16, headerH / 2, 'Earned: 0', {
+            fontFamily: FONT,
+            fontSize: '10px',
             color: '#ffd700'
-        }).setOrigin(1, 0);
+        }).setOrigin(1, 0.5).setDepth(10);
 
         // ---- Current word being built (above grid) ----
         this.currentWordText = this.add.text(
             this.gridStartX + gridWidth / 2,
-            this.gridStartY - 48,
+            this.gridStartY - 28,
             '',
             {
-                fontFamily: 'monospace',
-                fontSize: '32px',
-                color: '#ffffff',
-                fontStyle: 'bold'
+                fontFamily: FONT,
+                fontSize: '14px',
+                color: '#ffffff'
             }
-        ).setOrigin(0.5, 0.5);
+        ).setOrigin(0.5, 0.5).setDepth(10);
 
         // ---- Graphics layer for lines and tile highlights ----
-        this.lineGraphics = this.add.graphics();
-        this.highlightGraphics = this.add.graphics();
+        this.lineGraphics = this.add.graphics().setDepth(3);
+        this.highlightGraphics = this.add.graphics().setDepth(2);
 
         // ---- Render the 4x4 grid tiles ----
-        this.tileBackgrounds = [];  // 2D array of Graphics objects
-        this.tileLetters = [];      // 2D array of Text objects
+        this.tileBackgrounds = [];
+        this.tileLetters = [];
 
         for (var row = 0; row < GRID_ROWS; row++) {
             this.tileBackgrounds[row] = [];
@@ -109,53 +119,121 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
                 var tx = this.gridStartX + col * CELL;
                 var ty = this.gridStartY + row * CELL;
 
-                // Tile background: rounded rectangle
-                var bg = this.add.graphics();
-                bg.fillStyle(0x2d2d5e, 1);
-                bg.fillRoundedRect(tx, ty, TILE, TILE, 8);
-                bg.lineStyle(2, 0x4a4a8a, 1);
-                bg.strokeRoundedRect(tx, ty, TILE, TILE, 8);
+                var bg = this.add.image(tx + TILE / 2, ty + TILE / 2, 'letter_tile');
+                bg.setDisplaySize(TILE, TILE);
+                bg.setDepth(1);
                 this.tileBackgrounds[row][col] = bg;
 
-                // Letter text centered in tile
                 var letter = this.boggleGrid.getLetterAt(row, col);
                 var txt = this.add.text(tx + TILE / 2, ty + TILE / 2, letter, {
-                    fontFamily: 'monospace',
-                    fontSize: '28px',
-                    color: '#e0e0ff',
-                    fontStyle: 'bold'
-                }).setOrigin(0.5, 0.5);
+                    fontFamily: FONT,
+                    fontSize: '18px',
+                    color: '#2a1a0a'
+                }).setOrigin(0.5, 0.5).setDepth(2);
                 this.tileLetters[row][col] = txt;
             }
         }
 
-        // ---- Found words section (below grid) ----
-        var wordsAreaY = this.gridStartY + gridHeight + 60;
+        // ---- Scoring reference panel (left column) ----
+        var panelW = 200;
+        var panelX = this.gridStartX - panelW - 30;
+        if (panelX < 10) panelX = 10;
+        var panelY = this.gridStartY;
+        var panelH = gridHeight;
+
+        var scoreBg = this.add.graphics().setDepth(10);
+        scoreBg.fillStyle(0x111133, 0.7);
+        scoreBg.fillRoundedRect(panelX, panelY, panelW, panelH, 8);
+        scoreBg.lineStyle(1, 0x4444aa, 0.6);
+        scoreBg.strokeRoundedRect(panelX, panelY, panelW, panelH, 8);
+
+        this.add.text(panelX + panelW / 2, panelY + 16, 'SCORING', {
+            fontFamily: FONT,
+            fontSize: '10px',
+            color: '#aaaadd'
+        }).setOrigin(0.5, 0).setDepth(11);
+
+        this.add.text(panelX + 16, panelY + 42, 'LEN', {
+            fontFamily: FONT,
+            fontSize: '7px',
+            color: '#888899'
+        }).setDepth(11);
+
+        this.add.text(panelX + panelW - 16, panelY + 42, 'GOLD', {
+            fontFamily: FONT,
+            fontSize: '7px',
+            color: '#888899'
+        }).setOrigin(1, 0).setDepth(11);
+
+        var scoring = CFG.SCORING;
+        var rowKeys = [3, 4, 5, 6, 7, 8];
+        var tableStartY = panelY + 66;
+        var rowSpacing = Math.floor((panelH - 80) / rowKeys.length);
+
+        for (var si = 0; si < rowKeys.length; si++) {
+            var len = rowKeys[si];
+            var pts = scoring[len];
+            var rowY = tableStartY + si * rowSpacing;
+            var rowColor = len >= 7 ? '#ffd700' : (len >= 5 ? '#aaddff' : '#ccccdd');
+
+            this.add.text(panelX + 16, rowY, len + ' letters', {
+                fontFamily: FONT,
+                fontSize: '8px',
+                color: rowColor
+            }).setDepth(11);
+
+            this.add.text(panelX + panelW - 16, rowY, '+' + pts, {
+                fontFamily: FONT,
+                fontSize: '8px',
+                color: '#ffd700'
+            }).setOrigin(1, 0).setDepth(11);
+        }
+
+        // ---- Found words panel (right column) ----
+        var rightPanelX = this.gridStartX + gridWidth + 30;
+        var rightPanelW = CFG.WIDTH - rightPanelX - 10;
+        if (rightPanelW < 160) rightPanelW = 160;
+        var rightPanelY = this.gridStartY;
+        var rightPanelH = gridHeight;
+
+        var rightBg = this.add.graphics().setDepth(10);
+        rightBg.fillStyle(0x111133, 0.7);
+        rightBg.fillRoundedRect(rightPanelX, rightPanelY, rightPanelW, rightPanelH, 8);
+        rightBg.lineStyle(1, 0x4444aa, 0.6);
+        rightBg.strokeRoundedRect(rightPanelX, rightPanelY, rightPanelW, rightPanelH, 8);
+
+        this.wordCountText = this.add.text(
+            rightPanelX + rightPanelW / 2,
+            rightPanelY + 16,
+            '0 words found',
+            {
+                fontFamily: FONT,
+                fontSize: '8px',
+                color: '#aaaacc'
+            }
+        ).setOrigin(0.5, 0).setDepth(11);
+
+        this.rightPanelX = rightPanelX;
+        this.rightPanelY = rightPanelY;
+        this.rightPanelW = rightPanelW;
+        this.rightPanelH = rightPanelH;
+        this.wordsAreaY = rightPanelY + 40;
+        this.listMaxVisible = Math.floor((rightPanelH - 56) / 18);
         this.foundWordsTexts = [];
-        this.wordsAreaY = wordsAreaY;
-        this.wordsAreaCenterX = CFG.WIDTH / 2;
-        this.listMaxVisible = 24;
 
-        // Word count label
-        this.wordCountText = this.add.text(CFG.WIDTH / 2, wordsAreaY - 28, '0 words found', {
-            fontFamily: 'monospace',
-            fontSize: '18px',
-            color: '#aaaacc'
-        }).setOrigin(0.5, 0);
-
-        // ---- Instruction text (between grid and words) ----
+        // ---- Instruction text (below grid) ----
         this.add.text(
             this.gridStartX + gridWidth / 2,
-            this.gridStartY + gridHeight + 16,
-            'Drag across letters to form words!',
+            this.gridStartY + gridHeight + 14,
+            'Drag to form words!',
             {
-                fontFamily: 'monospace',
-                fontSize: '16px',
+                fontFamily: FONT,
+                fontSize: '7px',
                 color: '#666688'
             }
-        ).setOrigin(0.5, 0);
+        ).setOrigin(0.5, 0).setDepth(10);
 
-        // ---- Timer event (ticks every second) ----
+        // ---- Timer event ----
         this.timerEvent = this.time.addEvent({
             delay: 1000,
             callback: this._onTimerTick,
@@ -164,7 +242,6 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         });
 
         // ---- Input handlers ----
-        // We use a full-scene interactive zone for the grid area
         this.input.on('pointerdown', function (pointer) {
             if (self.phaseOver) return;
             var cell = self._pointerToCell(pointer);
@@ -196,10 +273,6 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
     /*  GRID / POINTER HELPERS                                            */
     /* ================================================================== */
 
-    /**
-     * Convert a pointer position to a grid cell {row, col},
-     * or null if the pointer is outside the grid.
-     */
     _pointerToCell(pointer) {
         var col = Math.floor((pointer.x - this.gridStartX) / this.cellPitch);
         var row = Math.floor((pointer.y - this.gridStartY) / this.cellPitch);
@@ -209,20 +282,16 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
             return null;
         }
 
-        // Check pointer is actually inside the tile (not in the gap)
         var localX = (pointer.x - this.gridStartX) - col * this.cellPitch;
         var localY = (pointer.y - this.gridStartY) - row * this.cellPitch;
 
         if (localX > this.tileSize || localY > this.tileSize) {
-            return null; // pointer is in the gap between tiles
+            return null;
         }
 
         return { row: row, col: col };
     }
 
-    /**
-     * Get the center pixel position of a tile at (row, col).
-     */
     _tileCenterX(col) {
         return this.gridStartX + col * this.cellPitch + this.tileSize / 2;
     }
@@ -246,31 +315,26 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
 
         var last = this.selectionPath[this.selectionPath.length - 1];
 
-        // Same tile as last — ignore
         if (last.row === row && last.col === col) return;
 
-        // Check if this tile is the second-to-last (undo / backtrack)
+        // Check backtrack (undo)
         if (this.selectionPath.length >= 2) {
             var prev = this.selectionPath[this.selectionPath.length - 2];
             if (prev.row === row && prev.col === col) {
-                // Pop the last tile (user dragged backward)
                 this.selectionPath.pop();
                 this._updateVisuals();
                 return;
             }
         }
 
-        // Check adjacency to last tile
         if (!this.boggleGrid.isAdjacent(last.row, last.col, row, col)) {
             return;
         }
 
-        // Check not already in path
         if (this.boggleGrid.isInPath(row, col, this.selectionPath)) {
             return;
         }
 
-        // Add tile to path
         this.selectionPath.push({ row: row, col: col });
         this._updateVisuals();
     }
@@ -286,14 +350,12 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
 
         var word = this.boggleGrid.getWordFromPath(this.selectionPath);
 
-        // Already found?
         if (this.foundWords.has(word)) {
             this._flashDuplicate();
             this._clearSelection();
             return;
         }
 
-        // Valid word?
         if (!Game.Dictionary.isWord(word)) {
             this._flashInvalid();
             this._clearSelection();
@@ -325,11 +387,9 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         var len = word.length;
         var scoring = Game.CONFIG.SCORING;
 
-        // Use the scoring table; for lengths beyond the table, use the max
         if (scoring[len] !== undefined) {
             return scoring[len];
         }
-        // For words longer than 8, use the highest score (32)
         var maxPoints = 0;
         for (var key in scoring) {
             if (scoring[key] > maxPoints) {
@@ -349,10 +409,6 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         this._updateCurrentWordText();
     }
 
-    /**
-     * Redraw tile backgrounds. Selected tiles get a coloured overlay
-     * based on whether the current path is a valid prefix, word, or dead end.
-     */
     _drawTileHighlights() {
         this.highlightGraphics.clear();
 
@@ -364,20 +420,13 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
                          Game.Dictionary.isWord(word);
         var isPrefix = Game.Dictionary.isPrefix(word);
 
-        // Determine highlight colour
         var color, alpha;
         if (isComplete) {
-            // Bright green — valid submittable word
-            color = 0x00ff88;
-            alpha = 0.35;
+            color = 0x00ff88; alpha = 0.35;
         } else if (isPrefix) {
-            // Gold/yellow — valid prefix, keep going
-            color = 0xffd700;
-            alpha = 0.25;
+            color = 0xffd700; alpha = 0.25;
         } else {
-            // Red/orange — dead end, no words down this path
-            color = 0xff4444;
-            alpha = 0.3;
+            color = 0xff4444; alpha = 0.3;
         }
 
         for (var i = 0; i < this.selectionPath.length; i++) {
@@ -387,16 +436,11 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
 
             this.highlightGraphics.fillStyle(color, alpha);
             this.highlightGraphics.fillRoundedRect(tx, ty, this.tileSize, this.tileSize, 8);
-
-            // Brighter border for selected tiles
             this.highlightGraphics.lineStyle(2, color, 0.8);
             this.highlightGraphics.strokeRoundedRect(tx, ty, this.tileSize, this.tileSize, 8);
         }
     }
 
-    /**
-     * Draw connecting lines between selected tiles.
-     */
     _drawPathLines() {
         this.lineGraphics.clear();
 
@@ -409,16 +453,11 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         var isPrefix = Game.Dictionary.isPrefix(word);
 
         var lineColor;
-        if (isComplete) {
-            lineColor = 0x00ff88;
-        } else if (isPrefix) {
-            lineColor = 0xffd700;
-        } else {
-            lineColor = 0xff4444;
-        }
+        if (isComplete) { lineColor = 0x00ff88; }
+        else if (isPrefix) { lineColor = 0xffd700; }
+        else { lineColor = 0xff4444; }
 
         this.lineGraphics.lineStyle(4, lineColor, 0.8);
-
         this.lineGraphics.beginPath();
         var first = this.selectionPath[0];
         this.lineGraphics.moveTo(
@@ -437,9 +476,6 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         this.lineGraphics.strokePath();
     }
 
-    /**
-     * Show the current word being built above the grid.
-     */
     _updateCurrentWordText() {
         if (this.selectionPath.length === 0) {
             this.currentWordText.setText('');
@@ -467,14 +503,10 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
     /*  FEEDBACK ANIMATIONS                                               */
     /* ================================================================== */
 
-    /**
-     * Brief red flash on invalid submission.
-     */
     _flashInvalid() {
         var self = this;
         this.currentWordText.setColor('#ff2222');
 
-        // Quick shake on the current word text
         if (this.selectionPath.length > 0) {
             var word = this.boggleGrid.getWordFromPath(this.selectionPath);
             this.currentWordText.setText(word);
@@ -485,9 +517,6 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         });
     }
 
-    /**
-     * Flash for duplicate word.
-     */
     _flashDuplicate() {
         var self = this;
         var word = this.boggleGrid.getWordFromPath(this.selectionPath);
@@ -499,41 +528,33 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         });
     }
 
-    /**
-     * Success animation: flash green, float the points up.
-     */
     _animateSuccess(word, points) {
         var self = this;
+        var FONT = Game.CONFIG.FONT;
 
-        // Flash the current word text green
         this.currentWordText.setText(word + '  +' + points);
         this.currentWordText.setColor('#00ff88');
 
-        // Floating points text rising up from grid center
         var floatText = this.add.text(
             this.currentWordText.x,
             this.currentWordText.y,
             '+' + points,
             {
-                fontFamily: 'monospace',
-                fontSize: '28px',
-                color: '#00ff88',
-                fontStyle: 'bold'
+                fontFamily: FONT,
+                fontSize: '14px',
+                color: '#00ff88'
             }
         ).setOrigin(0.5, 0.5);
 
         this.tweens.add({
             targets: floatText,
-            y: floatText.y - 60,
+            y: floatText.y - 50,
             alpha: 0,
             duration: 800,
             ease: 'Power2',
-            onComplete: function () {
-                floatText.destroy();
-            }
+            onComplete: function () { floatText.destroy(); }
         });
 
-        // Clear word text after a beat
         this.time.delayedCall(400, function () {
             if (!self.isDragging) {
                 self.currentWordText.setText('');
@@ -546,53 +567,44 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
     /* ================================================================== */
 
     _updateFoundWordsList() {
-        // Destroy old text objects
+        var FONT = Game.CONFIG.FONT;
+
         for (var i = 0; i < this.foundWordsTexts.length; i++) {
             this.foundWordsTexts[i].destroy();
         }
         this.foundWordsTexts = [];
 
-        // Update word count
-        this.wordCountText.setText(this.foundWordsList.length + ' word' + (this.foundWordsList.length !== 1 ? 's' : '') + ' found');
+        var wordCount = this.foundWordsList.length;
+        this.wordCountText.setText(wordCount + ' word' + (wordCount !== 1 ? 's' : '') + ' found');
 
-        // Render words in a multi-column grid, centered below the Boggle grid
-        var COL_WIDTH = 130;
-        var ROW_HEIGHT = 24;
-        var MAX_COLS = 4;
-        var MAX_ROWS = 6;
-        var count = Math.min(this.foundWordsList.length, this.listMaxVisible);
-
-        // Calculate grid dimensions
-        var numCols = Math.min(MAX_COLS, Math.max(1, Math.ceil(count / MAX_ROWS)));
-        var numRows = Math.min(MAX_ROWS, Math.ceil(count / numCols));
-        var totalWidth = numCols * COL_WIDTH;
-        var startX = this.wordsAreaCenterX - totalWidth / 2;
+        var ROW_HEIGHT = 18;
+        var count = Math.min(wordCount, this.listMaxVisible);
+        var x = this.rightPanelX + 12;
 
         for (var i = 0; i < count; i++) {
             var entry = this.foundWordsList[i];
-            var col = Math.floor(i / numRows);
-            var row = i % numRows;
-            var x = startX + col * COL_WIDTH;
-            var y = this.wordsAreaY + row * ROW_HEIGHT;
+            var y = this.wordsAreaY + i * ROW_HEIGHT;
 
-            var txt = this.add.text(x, y,
-                entry.word + ' +' + entry.points, {
-                    fontFamily: 'monospace',
-                    fontSize: '16px',
-                    color: i === 0 ? '#00ff88' : '#ccccdd'
-                });
+            var txt = this.add.text(x, y, entry.word + ' +' + entry.points, {
+                fontFamily: FONT,
+                fontSize: '7px',
+                color: i === 0 ? '#00ff88' : '#ccccdd'
+            }).setDepth(11);
             this.foundWordsTexts.push(txt);
         }
 
-        // Show overflow count
-        if (this.foundWordsList.length > this.listMaxVisible) {
-            var moreText = this.add.text(this.wordsAreaCenterX, this.wordsAreaY + numRows * ROW_HEIGHT + 4,
-                '+ ' + (this.foundWordsList.length - count) + ' more', {
-                    fontFamily: 'monospace',
-                    fontSize: '14px',
+        if (wordCount > this.listMaxVisible) {
+            var moreY = this.wordsAreaY + count * ROW_HEIGHT;
+            var more = this.add.text(
+                this.rightPanelX + this.rightPanelW / 2, moreY,
+                '+ ' + (wordCount - count) + ' more',
+                {
+                    fontFamily: FONT,
+                    fontSize: '7px',
                     color: '#666688'
-                }).setOrigin(0.5, 0);
-            this.foundWordsTexts.push(moreText);
+                }
+            ).setOrigin(0.5, 0).setDepth(11);
+            this.foundWordsTexts.push(more);
         }
     }
 
@@ -606,10 +618,8 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         this.timeRemaining--;
         this.timerText.setText(this._formatTime(this.timeRemaining));
 
-        // Flash timer red in last 5 seconds
         if (this.timeRemaining <= 5) {
             this.timerText.setColor('#ff4444');
-            // Pulse effect
             this.tweens.add({
                 targets: this.timerText,
                 scaleX: 1.15,
@@ -637,13 +647,13 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
     _endPhase() {
         if (this.phaseOver) return;
         this.phaseOver = true;
+        var FONT = Game.CONFIG.FONT;
 
-        // Stop the timer
         if (this.timerEvent) {
             this.timerEvent.remove(false);
         }
 
-        // If currently dragging, try to submit the word
+        // Try to submit if currently dragging
         if (this.isDragging && this.selectionPath.length >= Game.CONFIG.MIN_WORD_LENGTH) {
             var word = this.boggleGrid.getWordFromPath(this.selectionPath);
             if (!this.foundWords.has(word) && Game.Dictionary.isWord(word)) {
@@ -657,40 +667,38 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         this.isDragging = false;
         this._clearSelection();
 
-        // Update registry with earned currency
+        // Update registry
         var currentCurrency = this.registry.get('currency') || 0;
         this.registry.set('currency', currentCurrency + this.earnedCurrency);
 
-        // Show "Time's Up!" overlay
+        // Overlay
         var self = this;
-        var overlay = this.add.rectangle(
+        this.add.rectangle(
             Game.CONFIG.WIDTH / 2, Game.CONFIG.HEIGHT / 2,
             Game.CONFIG.WIDTH, Game.CONFIG.HEIGHT,
             0x000000, 0.6
         ).setDepth(100);
 
-        var timesUpText = this.add.text(
+        this.add.text(
             Game.CONFIG.WIDTH / 2, Game.CONFIG.HEIGHT / 2 - 30,
             "Time's Up!",
             {
-                fontFamily: 'monospace',
-                fontSize: '48px',
-                color: '#ffffff',
-                fontStyle: 'bold'
+                fontFamily: FONT,
+                fontSize: '24px',
+                color: '#ffffff'
             }
         ).setOrigin(0.5, 0.5).setDepth(101);
 
-        var summaryText = this.add.text(
+        this.add.text(
             Game.CONFIG.WIDTH / 2, Game.CONFIG.HEIGHT / 2 + 30,
-            this.foundWords.size + ' words found  |  +' + this.earnedCurrency + ' currency',
+            this.foundWords.size + ' words  |  +' + this.earnedCurrency + ' gold',
             {
-                fontFamily: 'monospace',
-                fontSize: '22px',
+                fontFamily: FONT,
+                fontSize: '10px',
                 color: '#ffd700'
             }
         ).setOrigin(0.5, 0.5).setDepth(101);
 
-        // Transition to BuildPhaseScene after a short delay
         this.time.delayedCall(2000, function () {
             self.scene.start('BuildPhaseScene');
         });

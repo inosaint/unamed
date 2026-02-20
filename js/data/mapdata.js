@@ -37,32 +37,34 @@ Game.MAP = {
      * to give players strategic choices at every bend.
      */
     spots: [
-        // Along the first horizontal segment (top)
+        // Segment [1]-[2]: horizontal right at y=80, spots below
         { x: 600, y: 140 },
-        { x: 700, y: 140 },
+        { x: 730, y: 140 },
 
-        // Near the first right-side descent
-        { x: 860, y: 155 },
+        // Segment [2]-[3]: vertical down at x=800, spots to the right
+        { x: 860, y: 130 },
+        { x: 860, y: 190 },
 
-        // Along the second horizontal segment (upper-mid)
-        { x: 650, y: 170 },
-        { x: 400, y: 290 },
-        { x: 300, y: 170 },
+        // Segment [3]-[4]: horizontal left at y=230, spots above
+        { x: 600, y: 170 },
+        { x: 400, y: 170 },
 
-        // Near the left-side descent
-        { x: 140, y: 305 },
+        // Segment [4]-[5]: vertical down at x=200, spots to the left
+        { x: 140, y: 280 },
+        { x: 140, y: 340 },
 
-        // Along the third horizontal segment (lower-mid)
+        // Segment [5]-[6]: horizontal right at y=380, spots below
         { x: 400, y: 440 },
-        { x: 600, y: 320 },
-        { x: 700, y: 440 },
+        { x: 600, y: 440 },
 
-        // Near the second right-side descent
+        // Segment [6]-[7]: vertical down at x=800, spots to the right
         { x: 860, y: 455 },
 
-        // Near the castle approach
-        { x: 450, y: 590 },
-        { x: 580, y: 590 }
+        // Segment [7]-[8]: horizontal left at y=530, spots above
+        { x: 650, y: 470 },
+
+        // Near castle approach
+        { x: 450, y: 590 }
     ],
 
     /**

@@ -16,15 +16,8 @@ html, body {
     color: #e0e0e0;
 }
 
-/* Center the game canvas container */
+/* Game canvas container - Phaser Scale Manager handles sizing and centering */
 #game-container {
-    width: 1024px;
-    height: 768px;
-    margin: 0 auto;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     border: 2px solid #2a2a4a;
     border-radius: 4px;
     box-shadow: 0 0 20px rgba(100, 100, 255, 0.15);

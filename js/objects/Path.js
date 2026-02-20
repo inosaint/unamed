@@ -113,24 +113,32 @@ Game.Path.prototype.draw = function (graphics) {
     var wp = this.waypoints;
 
     // --- Border / shadow line (drawn first, slightly wider) ---
-    graphics.lineStyle(46, 0x7a5c30, 1);   // dark brown border
+    graphics.lineStyle(46, 0x7a5c30, 1);
     graphics.beginPath();
     graphics.moveTo(wp[0].x, wp[0].y);
-
     for (var i = 1; i < wp.length; i++) {
         graphics.lineTo(wp[i].x, wp[i].y);
     }
-
     graphics.strokePath();
 
+    // Fill corners with circles matching border line radius
+    graphics.fillStyle(0x7a5c30, 1);
+    for (var ci = 1; ci < wp.length - 1; ci++) {
+        graphics.fillCircle(wp[ci].x, wp[ci].y, 23);
+    }
+
     // --- Main path fill line ---
-    graphics.lineStyle(40, 0xc2a060, 1);   // tan / sandy brown
+    graphics.lineStyle(40, 0xc2a060, 1);
     graphics.beginPath();
     graphics.moveTo(wp[0].x, wp[0].y);
-
     for (var j = 1; j < wp.length; j++) {
         graphics.lineTo(wp[j].x, wp[j].y);
     }
-
     graphics.strokePath();
+
+    // Fill corners with circles matching fill line radius
+    graphics.fillStyle(0xc2a060, 1);
+    for (var cj = 1; cj < wp.length - 1; cj++) {
+        graphics.fillCircle(wp[cj].x, wp[cj].y, 20);
+    }
 };

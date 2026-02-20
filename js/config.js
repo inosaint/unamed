@@ -17,6 +17,9 @@ Game.CONFIG = {
     WIDTH: 1024,
     HEIGHT: 768,
 
+    // Font
+    FONT: '"Press Start 2P"',
+
     // Boggle grid
     GRID_SIZE: 4,            // 4x4 letter grid
     MIN_WORD_LENGTH: 3,      // minimum letters for a valid word

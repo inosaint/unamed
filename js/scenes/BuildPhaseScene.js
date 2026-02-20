@@ -32,8 +32,13 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         this.spotSprites = [];
         this.towerSprites = [];
 
-        // Background
+        // Background: tiled grass
         this.cameras.main.setBackgroundColor(0x2d5a27);
+        for (var bgY = 0; bgY < Game.CONFIG.HEIGHT; bgY += 64) {
+            for (var bgX = 0; bgX < Game.CONFIG.WIDTH; bgX += 64) {
+                this.add.image(bgX + 32, bgY + 32, 'grass').setDepth(0);
+            }
+        }
 
         // Draw path
         this.path = new Game.Path(Game.MAP.path);
@@ -45,6 +50,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         this.castle = new Game.Castle(this, Game.MAP.castle.x, Game.MAP.castle.y);
         this.castle.hp = this.castleHP;
         this.castle.maxHp = Game.CONFIG.STARTING_CASTLE_HP;
+        this.castle._updateDamageFrame();
         this.castle.updateHPBar();
 
         // Placement spots and existing towers
@@ -84,27 +90,29 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         panelBg.lineStyle(2, 0xffd700, 0.6);
         panelBg.lineBetween(0, 50, W, 50);
 
+        var FONT = Game.CONFIG.FONT;
+
         // Round label (center)
         this.add.text(W / 2, 25, 'Round ' + this.currentRound + ' - Build Phase', {
-            fontSize: '20px', fontFamily: 'Arial', fontStyle: 'bold',
+            fontSize: '10px', fontFamily: FONT,
             color: '#ffd700', align: 'center'
         }).setOrigin(0.5, 0.5).setDepth(11);
 
         // Currency (left)
         this.currencyText = this.add.text(16, 25, 'Gold: ' + Game.CurrencyManager.get() + 'g', {
-            fontSize: '18px', fontFamily: 'Arial', fontStyle: 'bold', color: '#ffdd00'
+            fontSize: '9px', fontFamily: FONT, color: '#ffdd00'
         }).setOrigin(0, 0.5).setDepth(11);
 
         // Castle HP (right)
         this.add.text(W - 16, 25, 'Castle HP: ' + this.castleHP, {
-            fontSize: '16px', fontFamily: 'Arial', color: '#ff6666'
+            fontSize: '8px', fontFamily: FONT, color: '#ff6666'
         }).setOrigin(1, 0.5).setDepth(11);
 
         // Instructions text with tower limit info
         var maxPerType = this._getMaxPerType();
         this.instructionText = this.add.text(W / 2, 68,
-            'Tap a green circle to place a tower (max ' + maxPerType + ' of each type)', {
-            fontSize: '14px', fontFamily: 'Arial', fontStyle: 'italic', color: '#aaffaa'
+            'Tap a spot to place a tower (max ' + maxPerType + ' each)', {
+            fontSize: '7px', fontFamily: FONT, color: '#aaffaa'
         }).setOrigin(0.5, 0.5).setDepth(11);
     }
 
@@ -207,14 +215,14 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
                 // Name
                 var nameText = self.add.text(popupX + 48, rowY - 8, data.name, {
-                    fontSize: '14px', fontFamily: 'Arial', fontStyle: 'bold',
+                    fontSize: '7px', fontFamily: Game.CONFIG.FONT,
                     color: canAfford ? '#ffffff' : '#666666'
                 }).setOrigin(0, 0.5);
                 container.add(nameText);
 
                 // Cost
                 var costText = self.add.text(popupX + 48, rowY + 10, data.cost + 'g', {
-                    fontSize: '12px', fontFamily: 'Arial',
+                    fontSize: '6px', fontFamily: Game.CONFIG.FONT,
                     color: canAfford ? '#ffd700' : '#994444'
                 }).setOrigin(0, 0.5);
                 container.add(costText);
@@ -224,7 +232,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
                 var infoStr = 'DMG:' + data.damage + ' ' + limitStr;
                 var infoColor = atLimit ? '#ff6666' : (canAfford ? '#aaaacc' : '#555566');
                 var infoText = self.add.text(popupX + popupW - 10, rowY, infoStr, {
-                    fontSize: '10px', fontFamily: 'Arial',
+                    fontSize: '6px', fontFamily: Game.CONFIG.FONT,
                     color: infoColor
                 }).setOrigin(1, 0.5);
                 container.add(infoText);
@@ -254,7 +262,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
         // Close button (X) in top-right corner
         var closeText = this.add.text(popupX + popupW - 12, popupY + 8, 'X', {
-            fontSize: '14px', fontFamily: 'Arial', fontStyle: 'bold', color: '#ff6666'
+            fontSize: '8px', fontFamily: Game.CONFIG.FONT, color: '#ff6666'
         }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
         closeText.on('pointerdown', function () {
             self._popupJustOpened = true;
@@ -305,7 +313,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         this.towerSprites.push(img);
 
         var label = this.add.text(x, y + 22, towerData.name, {
-            fontSize: '10px', fontFamily: 'Arial', color: '#ffffff',
+            fontSize: '6px', fontFamily: Game.CONFIG.FONT, color: '#ffffff',
             stroke: '#000000', strokeThickness: 2, align: 'center'
         }).setOrigin(0.5, 0).setDepth(4);
     }
@@ -376,7 +384,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
         // Feedback
         var text = this.add.text(spot.x, spot.y - 30, towerData.name + ' built!', {
-            fontSize: '14px', fontFamily: 'Arial', fontStyle: 'bold',
+            fontSize: '7px', fontFamily: Game.CONFIG.FONT,
             color: '#00ff00', stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5, 0.5).setDepth(25);
 
@@ -416,7 +424,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         btnBg.strokeRoundedRect(btnX - btnW / 2, btnY - btnH / 2, btnW, btnH, 12);
 
         this.add.text(btnX, btnY, 'Start Wave!', {
-            fontSize: '22px', fontFamily: 'Arial', fontStyle: 'bold',
+            fontSize: '11px', fontFamily: Game.CONFIG.FONT,
             color: '#ffffff', align: 'center'
         }).setOrigin(0.5, 0.5).setDepth(11);
 
@@ -477,9 +485,10 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         var allAtLimit = cheapest === Infinity;
         if (allAtLimit || (currency < cheapest && currency === 0) || !hasEmptySpot) {
             this.add.text(Game.CONFIG.WIDTH / 2, Game.CONFIG.HEIGHT / 2 - 60,
-                'No builds available - starting wave...', {
-                    fontSize: '18px', fontFamily: 'Arial', fontStyle: 'bold',
-                    color: '#ffcc00', stroke: '#000000', strokeThickness: 3
+                'No builds available\nstarting wave...', {
+                    fontSize: '9px', fontFamily: Game.CONFIG.FONT,
+                    color: '#ffcc00', stroke: '#000000', strokeThickness: 3,
+                    align: 'center'
                 }).setOrigin(0.5, 0.5).setDepth(30);
 
             this.time.delayedCall(1500, function () { self._startWave(); });
