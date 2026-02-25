@@ -100,45 +100,88 @@ Game.Path.prototype.getTotalLength = function () {
 };
 
 /**
- * draw(graphics)
+ * draw(scene, depth)
  *
- * Renders the path onto a Phaser Graphics object.
- * Draws a darker border line first for depth, then a lighter
- * tan/brown fill line on top.
+ * Renders the path using sliced sprite tiles (corners + straights).
+ * Places corner pieces at interior waypoints and tiles straight
+ * segments between them.
  *
- * @param {Phaser.GameObjects.Graphics} graphics - The Phaser Graphics
- *   object to draw onto (should already be added to the scene).
+ * @param {Phaser.Scene} scene - The scene to add images to.
+ * @param {number} [depth=1] - Depth for the path sprites.
  */
-Game.Path.prototype.draw = function (graphics) {
+Game.Path.prototype.draw = function (scene, depth) {
+    if (depth === undefined) depth = 1;
     var wp = this.waypoints;
+    var TILE = 64;
+    var STEP = TILE - 2; // overlap tiles by 2px to prevent seams
 
-    // --- Border / shadow line (drawn first, slightly wider) ---
-    graphics.lineStyle(46, 0x7a5c30, 1);
-    graphics.beginPath();
-    graphics.moveTo(wp[0].x, wp[0].y);
-    for (var i = 1; i < wp.length; i++) {
-        graphics.lineTo(wp[i].x, wp[i].y);
-    }
-    graphics.strokePath();
-
-    // Fill corners with circles matching border line radius
-    graphics.fillStyle(0x7a5c30, 1);
-    for (var ci = 1; ci < wp.length - 1; ci++) {
-        graphics.fillCircle(wp[ci].x, wp[ci].y, 23);
+    // Helper: determine direction from wp[i] to wp[i+1]
+    function segDir(i) {
+        var dx = wp[i + 1].x - wp[i].x;
+        var dy = wp[i + 1].y - wp[i].y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 'right' : 'left';
+        }
+        return dy > 0 ? 'down' : 'up';
     }
 
-    // --- Main path fill line ---
-    graphics.lineStyle(40, 0xc2a060, 1);
-    graphics.beginPath();
-    graphics.moveTo(wp[0].x, wp[0].y);
-    for (var j = 1; j < wp.length; j++) {
-        graphics.lineTo(wp[j].x, wp[j].y);
-    }
-    graphics.strokePath();
+    // 1. Tile straight segments between consecutive waypoints.
+    //    Inset by TILE at interior waypoints (corners) so tiles don't poke past.
+    var HALF = TILE / 2;
+    var INSET = TILE; // full tile inset at corners
+    for (var s = 0; s < wp.length - 1; s++) {
+        var ax = wp[s].x, ay = wp[s].y;
+        var bx = wp[s + 1].x, by = wp[s + 1].y;
+        var horizontal = Math.abs(bx - ax) > Math.abs(by - ay);
 
-    // Fill corners with circles matching fill line radius
-    graphics.fillStyle(0xc2a060, 1);
-    for (var cj = 1; cj < wp.length - 1; cj++) {
-        graphics.fillCircle(wp[cj].x, wp[cj].y, 20);
+        // Is the start/end waypoint an interior point (corner)?
+        var sCorner = (s > 0);
+        var eCorner = (s + 1 < wp.length - 1);
+
+        if (horizontal) {
+            var rawMin = Math.min(ax, bx);
+            var rawMax = Math.max(ax, bx);
+            var minX = rawMin + ((ax < bx ? sCorner : eCorner) ? INSET : 0);
+            var maxX = rawMax - ((ax < bx ? eCorner : sCorner) ? INSET : 0);
+            for (var tx = minX; tx <= maxX; tx += STEP) {
+                scene.add.image(tx, ay, 'path_straight_h')
+                    .setDisplaySize(TILE, TILE).setDepth(depth);
+            }
+            scene.add.image(maxX, ay, 'path_straight_h')
+                .setDisplaySize(TILE, TILE).setDepth(depth);
+        } else {
+            var rawMinY = Math.min(ay, by);
+            var rawMaxY = Math.max(ay, by);
+            var minY = rawMinY + ((ay < by ? sCorner : eCorner) ? INSET : 0);
+            var maxY = rawMaxY - ((ay < by ? eCorner : sCorner) ? INSET : 0);
+            for (var ty = minY; ty <= maxY; ty += STEP) {
+                scene.add.image(ax, ty, 'path_straight_v')
+                    .setDisplaySize(TILE, TILE).setDepth(depth);
+            }
+            scene.add.image(ax, maxY, 'path_straight_v')
+                .setDisplaySize(TILE, TILE).setDepth(depth);
+        }
+    }
+
+    // 2. Place corner sprites at interior waypoints (on top of straights)
+    for (var c = 1; c < wp.length - 1; c++) {
+        var fromDir = segDir(c - 1);
+        var toDir = segDir(c);
+        var cornerKey = null;
+
+        if ((fromDir === 'down' && toDir === 'right') || (fromDir === 'left' && toDir === 'up')) {
+            cornerKey = 'path_corner_bl';
+        } else if ((fromDir === 'down' && toDir === 'left') || (fromDir === 'right' && toDir === 'up')) {
+            cornerKey = 'path_corner_br';
+        } else if ((fromDir === 'up' && toDir === 'right') || (fromDir === 'left' && toDir === 'down')) {
+            cornerKey = 'path_corner_tl';
+        } else if ((fromDir === 'up' && toDir === 'left') || (fromDir === 'right' && toDir === 'down')) {
+            cornerKey = 'path_corner_tr';
+        }
+
+        if (cornerKey) {
+            scene.add.image(wp[c].x, wp[c].y, cornerKey)
+                .setDisplaySize(TILE, TILE).setDepth(depth + 0.1);
+        }
     }
 };

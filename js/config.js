@@ -14,8 +14,8 @@ window.Game = window.Game || {};
  */
 Game.CONFIG = {
     // Canvas / display
-    WIDTH: 1024,
-    HEIGHT: 768,
+    WIDTH: 576,
+    HEIGHT: 1024,
 
     // Font
     FONT: '"Press Start 2P"',

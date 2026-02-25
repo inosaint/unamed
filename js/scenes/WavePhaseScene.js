@@ -33,10 +33,8 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
             }
         }
 
-        // ---- Draw the path (above grass) ----
-        this.mapGraphics = this.add.graphics();
-        this.mapGraphics.setDepth(1);
-        this.path.draw(this.mapGraphics);
+        // ---- Draw the path using tiled images (above grass) ----
+        this.path.draw(this, 1);
 
         // ---- Castle ----
         this.castle = new Game.Castle(this, Game.MAP.castle.x, Game.MAP.castle.y);
@@ -71,32 +69,33 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
         this.waveComplete = false;
         this.gameOver = false;
 
-        // ---- UI ----
+        // ---- UI top bar ----
         var FONT = Game.CONFIG.FONT;
+        var W = Game.CONFIG.WIDTH;
+        var panelH = 56;
 
-        this.roundText = this.add.text(16, 16, 'Round: ' + this.round, {
-            fontSize: '11px',
-            fontFamily: FONT,
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
-        }).setDepth(20);
+        var panelBg = this.add.graphics().setDepth(19);
+        panelBg.fillStyle(0x0a0a1a, 0.92);
+        panelBg.fillRect(0, 0, W, panelH);
+        panelBg.fillStyle(0x1a1a3e, 0.5);
+        panelBg.fillRect(0, panelH - 4, W, 4);
 
-        this.castleHPText = this.add.text(16, 40, 'Castle HP: ' + this.castle.hp + '/' + this.castle.maxHp, {
-            fontSize: '9px',
-            fontFamily: FONT,
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
-        }).setDepth(20);
+        // Round (center top)
+        this.add.text(W / 2, 14, 'Wave ' + this.round, {
+            fontSize: '10px', fontFamily: FONT,
+            color: '#ffffff'
+        }).setOrigin(0.5, 0).setDepth(20);
 
-        this.enemyCountText = this.add.text(16, 60, 'Enemies: 0/' + this.waveManager.getEnemyCount(), {
-            fontSize: '9px',
-            fontFamily: FONT,
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
-        }).setDepth(20);
+        // Enemy count (left)
+        this.enemyCountText = this.add.text(16, 40, 'Enemies: ' + this.waveManager.getRemaining(), {
+            fontSize: '7px', fontFamily: FONT,
+            color: '#ffffff'
+        }).setOrigin(0, 0.5).setDepth(20);
+
+        // Castle HP bar (right side)
+        this.add.image(W - 120, 40, 'heart').setDisplaySize(16, 16).setOrigin(0, 0.5).setDepth(20);
+        this.hpBarGraphics = this.add.graphics().setDepth(20);
+        this._drawHPBar(W - 100, 33, 84, 14, this.castle.hp, this.castle.maxHp);
     }
 
     /**
@@ -173,9 +172,27 @@ Game.WavePhaseScene = class WavePhaseScene extends Phaser.Scene {
     // ---- UI helpers ----
 
     updateCastleHPText() {
-        if (this.castleHPText) {
-            this.castleHPText.setText('Castle HP: ' + this.castle.hp + '/' + this.castle.maxHp);
+        var W = Game.CONFIG.WIDTH;
+        this._drawHPBar(W - 100, 33, 84, 14, this.castle.hp, this.castle.maxHp);
+    }
+
+    _drawHPBar(x, y, w, h, hp, maxHp) {
+        var g = this.hpBarGraphics;
+        if (!g) return;
+        g.clear();
+
+        g.fillStyle(0x222222, 1);
+        g.fillRoundedRect(x, y, w, h, 3);
+
+        var ratio = hp / maxHp;
+        var color = ratio > 0.5 ? 0x00cc44 : (ratio > 0.25 ? 0xcccc00 : 0xcc2222);
+        if (ratio > 0) {
+            g.fillStyle(color, 1);
+            g.fillRoundedRect(x + 1, y + 1, (w - 2) * ratio, h - 2, 2);
         }
+
+        g.lineStyle(1, 0x888888, 0.6);
+        g.strokeRoundedRect(x, y, w, h, 3);
     }
 
     updateEnemyCountText() {

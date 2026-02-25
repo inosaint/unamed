@@ -40,11 +40,9 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
             }
         }
 
-        // Draw path
+        // Draw path using tiled images
         this.path = new Game.Path(Game.MAP.path);
-        this.mapGraphics = this.add.graphics();
-        this.mapGraphics.setDepth(1);
-        this.path.draw(this.mapGraphics);
+        this.path.draw(this, 1);
 
         // Draw castle
         this.castle = new Game.Castle(this, Game.MAP.castle.x, Game.MAP.castle.y);
@@ -81,39 +79,62 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
     _createTopPanel() {
         var W = Game.CONFIG.WIDTH;
+        var FONT = Game.CONFIG.FONT;
+        var panelH = 56;
 
-        // Dark panel background
+        // Dark panel background with gradient feel
         var panelBg = this.add.graphics();
         panelBg.setDepth(10);
-        panelBg.fillStyle(0x111122, 0.85);
-        panelBg.fillRect(0, 0, W, 50);
-        panelBg.lineStyle(2, 0xffd700, 0.6);
-        panelBg.lineBetween(0, 50, W, 50);
+        panelBg.fillStyle(0x0a0a1a, 0.92);
+        panelBg.fillRect(0, 0, W, panelH);
+        panelBg.fillStyle(0x1a1a3e, 0.5);
+        panelBg.fillRect(0, panelH - 4, W, 4);
 
-        var FONT = Game.CONFIG.FONT;
-
-        // Round label (center)
-        this.add.text(W / 2, 25, 'Round ' + this.currentRound + ' - Build Phase', {
+        // Round label (center top)
+        this.add.text(W / 2, 14, 'Round ' + this.currentRound, {
             fontSize: '10px', fontFamily: FONT,
-            color: '#ffd700', align: 'center'
-        }).setOrigin(0.5, 0.5).setDepth(11);
+            color: '#ffffff', align: 'center'
+        }).setOrigin(0.5, 0).setDepth(11);
 
-        // Currency (left)
-        this.currencyText = this.add.text(16, 25, 'Gold: ' + Game.CurrencyManager.get() + 'g', {
-            fontSize: '9px', fontFamily: FONT, color: '#ffdd00'
+        // Gold icon + amount (left)
+        this.add.image(18, 40, 'gold').setDisplaySize(18, 18).setOrigin(0, 0.5).setDepth(11);
+        this.currencyText = this.add.text(40, 40, '' + Game.CurrencyManager.get(), {
+            fontSize: '9px', fontFamily: FONT, color: '#ffd700'
         }).setOrigin(0, 0.5).setDepth(11);
 
-        // Castle HP (right)
-        this.add.text(W - 16, 25, 'Castle HP: ' + this.castleHP, {
-            fontSize: '8px', fontFamily: FONT, color: '#ff6666'
-        }).setOrigin(1, 0.5).setDepth(11);
+        // Castle HP bar (right side)
+        this.add.image(W - 120, 40, 'heart').setDisplaySize(16, 16).setOrigin(0, 0.5).setDepth(11);
+        this.hpBarGraphics = this.add.graphics().setDepth(11);
+        this._drawHPBar(W - 100, 33, 84, 14, this.castleHP, Game.CONFIG.STARTING_CASTLE_HP);
 
-        // Instructions text with tower limit info
+        // Instructions text
         var maxPerType = this._getMaxPerType();
-        this.instructionText = this.add.text(W / 2, 68,
+        this.instructionText = this.add.text(W / 2, panelH + 12,
             'Tap a spot to place a tower (max ' + maxPerType + ' each)', {
-            fontSize: '7px', fontFamily: FONT, color: '#aaffaa'
+            fontSize: '7px', fontFamily: FONT, color: '#aaffaa',
+            stroke: '#000000', strokeThickness: 2
         }).setOrigin(0.5, 0.5).setDepth(11);
+    }
+
+    _drawHPBar(x, y, w, h, hp, maxHp) {
+        var g = this.hpBarGraphics;
+        g.clear();
+
+        // Background
+        g.fillStyle(0x222222, 1);
+        g.fillRoundedRect(x, y, w, h, 3);
+
+        // Fill
+        var ratio = hp / maxHp;
+        var color = ratio > 0.5 ? 0x00cc44 : (ratio > 0.25 ? 0xcccc00 : 0xcc2222);
+        if (ratio > 0) {
+            g.fillStyle(color, 1);
+            g.fillRoundedRect(x + 1, y + 1, (w - 2) * ratio, h - 2, 2);
+        }
+
+        // Border
+        g.lineStyle(1, 0x888888, 0.6);
+        g.strokeRoundedRect(x, y, w, h, 3);
     }
 
     /* ================================================================ */
@@ -133,17 +154,17 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
                 var spotImg = self.add.image(spot.x, spot.y, 'placement_spot');
                 spotImg.setDepth(3);
-                spotImg.setScale(1.0);
+                spotImg.setDisplaySize(64, 64);
                 spotImg.setInteractive({ useHandCursor: true });
                 spotImg.setData('spotIndex', index);
 
                 // Hover effect
                 spotImg.on('pointerover', function () {
-                    spotImg.setScale(1.3);
+                    spotImg.setDisplaySize(72, 72);
                     spotImg.setAlpha(0.8);
                 });
                 spotImg.on('pointerout', function () {
-                    spotImg.setScale(1.0);
+                    spotImg.setDisplaySize(64, 64);
                     spotImg.setAlpha(1.0);
                 });
 
@@ -210,7 +231,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
                 // Icon
                 var icon = self.add.image(popupX + 24, rowY, data.textureKey);
-                icon.setScale(0.9);
+                icon.setDisplaySize(32, 32);
                 container.add(icon);
 
                 // Name
@@ -309,13 +330,8 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
         var img = this.add.image(x, y, towerData.textureKey);
         img.setDepth(4);
-        img.setScale(1.2);
+        img.setDisplaySize(80, 80);
         this.towerSprites.push(img);
-
-        var label = this.add.text(x, y + 22, towerData.name, {
-            fontSize: '6px', fontFamily: Game.CONFIG.FONT, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 2, align: 'center'
-        }).setOrigin(0.5, 0).setDepth(4);
     }
 
     /**
@@ -382,14 +398,14 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
         // Update UI
         this._updateCurrencyDisplay();
 
-        // Feedback
-        var text = this.add.text(spot.x, spot.y - 30, towerData.name + ' built!', {
+        // Brief feedback
+        var text = this.add.text(spot.x, spot.y - 40, 'Built!', {
             fontSize: '7px', fontFamily: Game.CONFIG.FONT,
             color: '#00ff00', stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5, 0.5).setDepth(25);
 
         this.tweens.add({
-            targets: text, y: spot.y - 70, alpha: 0, duration: 1000,
+            targets: text, y: spot.y - 80, alpha: 0, duration: 1000,
             ease: 'Power2', onComplete: function () { text.destroy(); }
         });
 
@@ -401,7 +417,7 @@ Game.BuildPhaseScene = class BuildPhaseScene extends Phaser.Scene {
 
     _updateCurrencyDisplay() {
         if (this.currencyText) {
-            this.currencyText.setText('Gold: ' + Game.CurrencyManager.get() + 'g');
+            this.currencyText.setText('' + Game.CurrencyManager.get());
         }
     }
 

@@ -4,10 +4,11 @@
  * The Boggle word-finding phase. Players swipe on a 4x4 letter grid
  * to form English words and earn currency before the build phase.
  *
- * Layout: three-column design
- *   Left:   Scoring reference table
- *   Center: 4x4 Boggle grid (vertically centered)
- *   Right:  Found words list
+ * Layout: portrait single-column design
+ *   Header:  Round, timer, currency
+ *   Center:  4x4 Boggle grid + current word display
+ *   Below:   Found words as mini letter tile rows
+ *   Corner:  "?" button for scoring rules overlay
  */
 
 window.Game = window.Game || {};
@@ -40,7 +41,7 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
 
         // ---- Layout constants ----
         var TILE = CFG.TILE_SIZE;       // 64
-        var GAP = 8;
+        var GAP = 14;
         var CELL = TILE + GAP;          // 72
         var GRID_COLS = CFG.GRID_SIZE;  // 4
         var GRID_ROWS = CFG.GRID_SIZE;  // 4
@@ -48,20 +49,16 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         var gridWidth = GRID_COLS * CELL - GAP;   // 280
         var gridHeight = GRID_ROWS * CELL - GAP;  // 280
 
-        // Grid: centered horizontally, vertically centered in playfield below header
-        var headerH = 50;
+        // Grid: centered horizontally, positioned in upper portion
+        var headerH = 64;
         this.gridStartX = Math.floor(CFG.WIDTH / 2 - gridWidth / 2);
-        this.gridStartY = Math.floor(headerH + (CFG.HEIGHT - headerH - gridHeight) / 2);
+        this.gridStartY = 200;
         this.cellPitch = CELL;
         this.tileSize = TILE;
 
-        // ---- Background: tiled stone floor ----
-        this.cameras.main.setBackgroundColor('#1a1a2e');
-        for (var bgY = 0; bgY < CFG.HEIGHT; bgY += 64) {
-            for (var bgX = 0; bgX < CFG.WIDTH; bgX += 64) {
-                this.add.image(bgX + 32, bgY + 32, 'floor_tile').setDepth(0).setAlpha(0.6);
-            }
-        }
+        // ---- Dungeon room background (Moonlighter-style) ----
+        this.cameras.main.setBackgroundColor('#0e0e1a');
+        this._drawDungeonRoom(CFG);
 
         // ---- Header bar background ----
         var headerBg = this.add.graphics().setDepth(9);
@@ -85,12 +82,28 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
             color: '#ffffff'
         }).setOrigin(0.5, 0.5).setDepth(10);
 
-        // ---- Currency display (top right) ----
-        this.currencyText = this.add.text(CFG.WIDTH - 16, headerH / 2, 'Earned: 0', {
+        // ---- Currency display (top right, gold icon + text) ----
+        var goldIcon = this.add.image(CFG.WIDTH - 80, headerH / 2, 'gold');
+        goldIcon.setDisplaySize(20, 20).setDepth(10);
+        this.currencyText = this.add.text(CFG.WIDTH - 66, headerH / 2, '0', {
             fontFamily: FONT,
             fontSize: '10px',
             color: '#ffd700'
-        }).setOrigin(1, 0.5).setDepth(10);
+        }).setOrigin(0, 0.5).setDepth(10);
+
+        // ---- "?" info button (scoring rules) ----
+        var infoBtnX = CFG.WIDTH - 30;
+        var infoBtnY = 75;
+        var infoBtn = this.add.text(infoBtnX, infoBtnY, '?', {
+            fontFamily: FONT,
+            fontSize: '16px',
+            color: '#222222',
+            backgroundColor: '#ffd700',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0.5, 0.5).setDepth(10).setInteractive({ useHandCursor: true });
+        infoBtn.on('pointerdown', function () {
+            self._showScoringOverlay();
+        });
 
         // ---- Current word being built (above grid) ----
         this.currentWordText = this.add.text(
@@ -134,104 +147,22 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
             }
         }
 
-        // ---- Scoring reference panel (left column) ----
-        var panelW = 200;
-        var panelX = this.gridStartX - panelW - 30;
-        if (panelX < 10) panelX = 10;
-        var panelY = this.gridStartY;
-        var panelH = gridHeight;
-
-        var scoreBg = this.add.graphics().setDepth(10);
-        scoreBg.fillStyle(0x111133, 0.7);
-        scoreBg.fillRoundedRect(panelX, panelY, panelW, panelH, 8);
-        scoreBg.lineStyle(1, 0x4444aa, 0.6);
-        scoreBg.strokeRoundedRect(panelX, panelY, panelW, panelH, 8);
-
-        this.add.text(panelX + panelW / 2, panelY + 16, 'SCORING', {
-            fontFamily: FONT,
-            fontSize: '10px',
-            color: '#aaaadd'
-        }).setOrigin(0.5, 0).setDepth(11);
-
-        this.add.text(panelX + 16, panelY + 42, 'LEN', {
-            fontFamily: FONT,
-            fontSize: '7px',
-            color: '#888899'
-        }).setDepth(11);
-
-        this.add.text(panelX + panelW - 16, panelY + 42, 'GOLD', {
-            fontFamily: FONT,
-            fontSize: '7px',
-            color: '#888899'
-        }).setOrigin(1, 0).setDepth(11);
-
-        var scoring = CFG.SCORING;
-        var rowKeys = [3, 4, 5, 6, 7, 8];
-        var tableStartY = panelY + 66;
-        var rowSpacing = Math.floor((panelH - 80) / rowKeys.length);
-
-        for (var si = 0; si < rowKeys.length; si++) {
-            var len = rowKeys[si];
-            var pts = scoring[len];
-            var rowY = tableStartY + si * rowSpacing;
-            var rowColor = len >= 7 ? '#ffd700' : (len >= 5 ? '#aaddff' : '#ccccdd');
-
-            this.add.text(panelX + 16, rowY, len + ' letters', {
-                fontFamily: FONT,
-                fontSize: '8px',
-                color: rowColor
-            }).setDepth(11);
-
-            this.add.text(panelX + panelW - 16, rowY, '+' + pts, {
-                fontFamily: FONT,
-                fontSize: '8px',
-                color: '#ffd700'
-            }).setOrigin(1, 0).setDepth(11);
-        }
-
-        // ---- Found words panel (right column) ----
-        var rightPanelX = this.gridStartX + gridWidth + 30;
-        var rightPanelW = CFG.WIDTH - rightPanelX - 10;
-        if (rightPanelW < 160) rightPanelW = 160;
-        var rightPanelY = this.gridStartY;
-        var rightPanelH = gridHeight;
-
-        var rightBg = this.add.graphics().setDepth(10);
-        rightBg.fillStyle(0x111133, 0.7);
-        rightBg.fillRoundedRect(rightPanelX, rightPanelY, rightPanelW, rightPanelH, 8);
-        rightBg.lineStyle(1, 0x4444aa, 0.6);
-        rightBg.strokeRoundedRect(rightPanelX, rightPanelY, rightPanelW, rightPanelH, 8);
-
+        // ---- Found words area (below grid) ----
+        var wordsStartY = this.gridStartY + gridHeight + 30;
         this.wordCountText = this.add.text(
-            rightPanelX + rightPanelW / 2,
-            rightPanelY + 16,
+            CFG.WIDTH / 2, wordsStartY,
             '0 words found',
             {
                 fontFamily: FONT,
                 fontSize: '8px',
-                color: '#aaaacc'
-            }
-        ).setOrigin(0.5, 0).setDepth(11);
-
-        this.rightPanelX = rightPanelX;
-        this.rightPanelY = rightPanelY;
-        this.rightPanelW = rightPanelW;
-        this.rightPanelH = rightPanelH;
-        this.wordsAreaY = rightPanelY + 40;
-        this.listMaxVisible = Math.floor((rightPanelH - 56) / 18);
-        this.foundWordsTexts = [];
-
-        // ---- Instruction text (below grid) ----
-        this.add.text(
-            this.gridStartX + gridWidth / 2,
-            this.gridStartY + gridHeight + 14,
-            'Drag to form words!',
-            {
-                fontFamily: FONT,
-                fontSize: '7px',
-                color: '#666688'
+                color: '#ffffff'
             }
         ).setOrigin(0.5, 0).setDepth(10);
+
+        this.wordsAreaY = wordsStartY + 24;
+        this.wordsAreaWidth = CFG.WIDTH - 40;
+        this.listMaxVisible = 14;
+        this.foundWordsObjects = []; // arrays of image/text objects per word row
 
         // ---- Timer event ----
         this.timerEvent = this.time.addEvent({
@@ -370,7 +301,7 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
 
         this._animateSuccess(word, points);
         this._updateFoundWordsList();
-        this.currencyText.setText('Earned: ' + this.earnedCurrency);
+        this.currencyText.setText('' + this.earnedCurrency);
         this._clearSelection();
     }
 
@@ -563,40 +494,77 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
     }
 
     /* ================================================================== */
-    /*  FOUND WORDS LIST                                                  */
+    /*  FOUND WORDS LIST (mini letter tile blocks)                        */
     /* ================================================================== */
 
     _updateFoundWordsList() {
         var FONT = Game.CONFIG.FONT;
+        var CFG = Game.CONFIG;
 
-        for (var i = 0; i < this.foundWordsTexts.length; i++) {
-            this.foundWordsTexts[i].destroy();
+        // Destroy previous word objects
+        for (var d = 0; d < this.foundWordsObjects.length; d++) {
+            var objs = this.foundWordsObjects[d];
+            for (var dd = 0; dd < objs.length; dd++) {
+                objs[dd].destroy();
+            }
         }
-        this.foundWordsTexts = [];
+        this.foundWordsObjects = [];
 
         var wordCount = this.foundWordsList.length;
         this.wordCountText.setText(wordCount + ' word' + (wordCount !== 1 ? 's' : '') + ' found');
 
-        var ROW_HEIGHT = 18;
+        var MINI_TILE = 24;
+        var TILE_GAP = 2;
+        var ROW_HEIGHT = 28;
         var count = Math.min(wordCount, this.listMaxVisible);
-        var x = this.rightPanelX + 12;
 
         for (var i = 0; i < count; i++) {
             var entry = this.foundWordsList[i];
-            var y = this.wordsAreaY + i * ROW_HEIGHT;
+            var word = entry.word;
+            var rowY = this.wordsAreaY + i * ROW_HEIGHT;
+            var rowObjs = [];
 
-            var txt = this.add.text(x, y, entry.word + ' +' + entry.points, {
+            // Calculate total width of this word row
+            var wordW = word.length * (MINI_TILE + TILE_GAP) - TILE_GAP;
+            var pointsStr = '+' + entry.points;
+            var totalW = wordW + 8 + 40; // word tiles + gap + points text
+            var startX = Math.floor(CFG.WIDTH / 2 - totalW / 2);
+
+            // Mini letter tiles
+            for (var c = 0; c < word.length; c++) {
+                var tileX = startX + c * (MINI_TILE + TILE_GAP) + MINI_TILE / 2;
+                var tileY = rowY + MINI_TILE / 2;
+
+                var tileBg = this.add.image(tileX, tileY, 'letter_tile');
+                tileBg.setDisplaySize(MINI_TILE, MINI_TILE);
+                tileBg.setDepth(10);
+                rowObjs.push(tileBg);
+
+                var letterTxt = this.add.text(tileX, tileY, word[c], {
+                    fontFamily: FONT,
+                    fontSize: '9px',
+                    color: '#2a1a0a'
+                }).setOrigin(0.5, 0.5).setDepth(11);
+                rowObjs.push(letterTxt);
+            }
+
+            // Points label
+            var ptsX = startX + wordW + 8;
+            var ptsTxt = this.add.text(ptsX, rowY + MINI_TILE / 2, pointsStr, {
                 fontFamily: FONT,
-                fontSize: '7px',
-                color: i === 0 ? '#00ff88' : '#ccccdd'
-            }).setDepth(11);
-            this.foundWordsTexts.push(txt);
+                fontSize: '8px',
+                color: i === 0 ? '#00ff88' : '#ffd700'
+            }).setOrigin(0, 0.5).setDepth(11);
+            rowObjs.push(ptsTxt);
+
+            this.foundWordsObjects.push(rowObjs);
         }
 
         if (wordCount > this.listMaxVisible) {
             var moreY = this.wordsAreaY + count * ROW_HEIGHT;
+            var moreObjs = [];
             var more = this.add.text(
-                this.rightPanelX + this.rightPanelW / 2, moreY,
+                CFG.WIDTH / 2, moreY,
                 '+ ' + (wordCount - count) + ' more',
                 {
                     fontFamily: FONT,
@@ -604,8 +572,88 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
                     color: '#666688'
                 }
             ).setOrigin(0.5, 0).setDepth(11);
-            this.foundWordsTexts.push(more);
+            moreObjs.push(more);
+            this.foundWordsObjects.push(moreObjs);
         }
+    }
+
+    /* ================================================================== */
+    /*  SCORING OVERLAY                                                   */
+    /* ================================================================== */
+
+    _showScoringOverlay() {
+        if (this._scoringOverlay) return;
+        var self = this;
+        var CFG = Game.CONFIG;
+        var FONT = CFG.FONT;
+
+        var container = this.add.container(0, 0).setDepth(200);
+
+        // Dim background
+        var dim = this.add.rectangle(CFG.WIDTH / 2, CFG.HEIGHT / 2,
+            CFG.WIDTH, CFG.HEIGHT, 0x000000, 0.7);
+        dim.setInteractive(); // block clicks through
+        container.add(dim);
+
+        // Panel
+        var panelW = 300;
+        var panelH = 280;
+        var panelX = CFG.WIDTH / 2 - panelW / 2;
+        var panelY = CFG.HEIGHT / 2 - panelH / 2;
+
+        var bg = this.add.graphics();
+        bg.fillStyle(0x1a1a3e, 0.95);
+        bg.fillRoundedRect(panelX, panelY, panelW, panelH, 12);
+        bg.lineStyle(2, 0xffd700, 0.8);
+        bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 12);
+        container.add(bg);
+
+        // Title
+        var title = this.add.text(CFG.WIDTH / 2, panelY + 24, 'SCORING', {
+            fontFamily: FONT, fontSize: '12px', color: '#ffd700'
+        }).setOrigin(0.5, 0);
+        container.add(title);
+
+        // Headers
+        container.add(this.add.text(panelX + 30, panelY + 56, 'LEN', {
+            fontFamily: FONT, fontSize: '7px', color: '#888899'
+        }));
+        container.add(this.add.text(panelX + panelW - 30, panelY + 56, 'GOLD', {
+            fontFamily: FONT, fontSize: '7px', color: '#888899'
+        }).setOrigin(1, 0));
+
+        // Rows
+        var scoring = CFG.SCORING;
+        var rowKeys = [3, 4, 5, 6, 7, 8];
+        var tableY = panelY + 80;
+        var rowSpacing = 28;
+
+        for (var si = 0; si < rowKeys.length; si++) {
+            var len = rowKeys[si];
+            var pts = scoring[len];
+            var rowY = tableY + si * rowSpacing;
+            var rowColor = len >= 7 ? '#ffd700' : (len >= 5 ? '#aaddff' : '#ccccdd');
+
+            container.add(this.add.text(panelX + 30, rowY, len + ' letters', {
+                fontFamily: FONT, fontSize: '9px', color: rowColor
+            }));
+            container.add(this.add.text(panelX + panelW - 30, rowY, '+' + pts, {
+                fontFamily: FONT, fontSize: '9px', color: '#ffd700'
+            }).setOrigin(1, 0));
+        }
+
+        // Close button
+        var closeBtn = this.add.text(CFG.WIDTH / 2, panelY + panelH - 24, 'CLOSE', {
+            fontFamily: FONT, fontSize: '10px', color: '#ff6666',
+            backgroundColor: '#331122', padding: { x: 16, y: 6 }
+        }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
+        closeBtn.on('pointerdown', function () {
+            container.destroy(true);
+            self._scoringOverlay = null;
+        });
+        container.add(closeBtn);
+
+        this._scoringOverlay = container;
     }
 
     /* ================================================================== */
@@ -702,5 +750,104 @@ Game.WordPhaseScene = class WordPhaseScene extends Phaser.Scene {
         this.time.delayedCall(2000, function () {
             self.scene.start('BuildPhaseScene');
         });
+    }
+
+    /* ================================================================== */
+    /*  DUNGEON ROOM BACKGROUND                                           */
+    /* ================================================================== */
+
+    _drawDungeonRoom(CFG) {
+        var W = CFG.WIDTH;
+        var H = CFG.HEIGHT;
+        var WALL = 72;          // wall thickness
+        var PILLAR = 20;        // corner pillar extra size
+
+        // --- Floor: tile the center area ---
+        for (var fy = WALL; fy < H - WALL; fy += 64) {
+            for (var fx = WALL; fx < W - WALL; fx += 64) {
+                this.add.image(fx + 32, fy + 32, 'floor_tile')
+                    .setDepth(0).setAlpha(0.7).setTint(0x88aaaa);
+            }
+        }
+
+        var g = this.add.graphics().setDepth(0.5);
+
+        // --- Outer wall (darkest layer) ---
+        g.fillStyle(0x1a1a2e, 1);
+        g.fillRect(0, 0, W, WALL);           // top
+        g.fillRect(0, H - WALL, W, WALL);    // bottom
+        g.fillRect(0, 0, WALL, H);           // left
+        g.fillRect(W - WALL, 0, WALL, H);    // right
+
+        // --- Wall stone texture (medium layer) ---
+        var stoneW = 48;
+        var stoneH = 24;
+        var colors = [0x2a2a44, 0x252540, 0x30304a, 0x222238];
+
+        // Top wall stones
+        for (var sy = 4; sy < WALL - 4; sy += stoneH + 2) {
+            var offset = (Math.floor(sy / (stoneH + 2)) % 2) * (stoneW / 2);
+            for (var sx = 4 + offset; sx < W - 4; sx += stoneW + 3) {
+                var c = colors[(sx * 7 + sy * 13) % colors.length];
+                g.fillStyle(c, 1);
+                g.fillRect(sx, sy, Math.min(stoneW, W - 4 - sx), stoneH);
+            }
+        }
+        // Bottom wall stones
+        for (var sy2 = H - WALL + 4; sy2 < H - 4; sy2 += stoneH + 2) {
+            var offset2 = (Math.floor((sy2 - H + WALL) / (stoneH + 2)) % 2) * (stoneW / 2);
+            for (var sx2 = 4 + offset2; sx2 < W - 4; sx2 += stoneW + 3) {
+                var c2 = colors[(sx2 * 7 + sy2 * 13) % colors.length];
+                g.fillStyle(c2, 1);
+                g.fillRect(sx2, sy2, Math.min(stoneW, W - 4 - sx2), stoneH);
+            }
+        }
+        // Left wall stones
+        for (var ly = WALL; ly < H - WALL; ly += stoneH + 2) {
+            var lOffset = (Math.floor(ly / (stoneH + 2)) % 2) * (stoneW / 2);
+            for (var lx = 4 + lOffset; lx < WALL - 4; lx += stoneW + 3) {
+                var c3 = colors[(lx * 7 + ly * 13) % colors.length];
+                g.fillStyle(c3, 1);
+                g.fillRect(lx, ly, Math.min(stoneW, WALL - 4 - lx), stoneH);
+            }
+        }
+        // Right wall stones
+        for (var ry = WALL; ry < H - WALL; ry += stoneH + 2) {
+            var rOffset = (Math.floor(ry / (stoneH + 2)) % 2) * (stoneW / 2);
+            for (var rx = W - WALL + 4 + rOffset; rx < W - 4; rx += stoneW + 3) {
+                var c4 = colors[(rx * 7 + ry * 13) % colors.length];
+                g.fillStyle(c4, 1);
+                g.fillRect(rx, ry, Math.min(stoneW, W - 4 - rx), stoneH);
+            }
+        }
+
+        // --- Inner wall edge (shadow/depth line) ---
+        g.fillStyle(0x111122, 1);
+        g.fillRect(WALL - 4, WALL - 4, W - 2 * WALL + 8, 4);  // top inner
+        g.fillRect(WALL - 4, H - WALL, W - 2 * WALL + 8, 4);  // bottom inner
+        g.fillRect(WALL - 4, WALL, 4, H - 2 * WALL);           // left inner
+        g.fillRect(W - WALL, WALL, 4, H - 2 * WALL);           // right inner
+
+        // --- Corner pillars (darker, thicker) ---
+        g.fillStyle(0x181830, 1);
+        g.fillRect(0, 0, WALL + PILLAR, WALL + PILLAR);                          // top-left
+        g.fillRect(W - WALL - PILLAR, 0, WALL + PILLAR, WALL + PILLAR);          // top-right
+        g.fillRect(0, H - WALL - PILLAR, WALL + PILLAR, WALL + PILLAR);          // bottom-left
+        g.fillRect(W - WALL - PILLAR, H - WALL - PILLAR, WALL + PILLAR, WALL + PILLAR); // bottom-right
+
+        // Pillar inner highlight
+        g.fillStyle(0x2a2a48, 1);
+        g.fillRect(6, 6, WALL + PILLAR - 12, WALL + PILLAR - 12);
+        g.fillRect(W - WALL - PILLAR + 6, 6, WALL + PILLAR - 12, WALL + PILLAR - 12);
+        g.fillRect(6, H - WALL - PILLAR + 6, WALL + PILLAR - 12, WALL + PILLAR - 12);
+        g.fillRect(W - WALL - PILLAR + 6, H - WALL - PILLAR + 6, WALL + PILLAR - 12, WALL + PILLAR - 12);
+
+        // --- Subtle floor shadow along walls ---
+        var shadow = this.add.graphics().setDepth(0.6);
+        shadow.fillStyle(0x000000, 0.25);
+        shadow.fillRect(WALL, WALL, W - 2 * WALL, 16);            // top shadow
+        shadow.fillRect(WALL, H - WALL - 16, W - 2 * WALL, 16);   // bottom shadow
+        shadow.fillRect(WALL, WALL, 16, H - 2 * WALL);            // left shadow
+        shadow.fillRect(W - WALL - 16, WALL, 16, H - 2 * WALL);   // right shadow
     }
 };

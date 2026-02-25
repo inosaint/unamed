@@ -25,8 +25,8 @@ Game.Castle = function (scene, x, y) {
     this.sprite = scene.add.sprite(x, y, 'castle_sheet', 0);
     this.sprite.setDepth(5);
 
-    // Scale down: frames are 917x1239, display at ~80px tall
-    var displayH = 80;
+    // Scale down: frames are 917x1239, display at ~120px tall
+    var displayH = 120;
     this.sprite.setScale(displayH / 1239);
 
     this.maxHp = scene.registry.get('castleMaxHp') ||

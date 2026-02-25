@@ -197,19 +197,68 @@ This preserves all dark outlines and detail that would be lost with color-simila
 
 ## Asset Checklist
 
+### Done (in `assets/` or `assets/processed/`)
 - [x] Grass tile — `assets/grass.png`
-- [ ] Archer tower — `assets/Archer-tower.png` (needs re-gen with magenta bg)
-- [ ] Basic tower
-- [ ] Cannon tower
-- [ ] Enemy
-- [ ] Basic bullet
-- [ ] Archer arrow
-- [ ] Cannonball
-- [ ] Cannon explosion
-- [ ] Castle
-- [ ] Castle damaged
-- [ ] Path tile
-- [ ] Placement spot
-- [ ] Boggle letter tile
-- [ ] Gold coin icon
-- [ ] Heart icon
+- [x] Archer tower — `assets/archer-tower.png`
+- [x] Basic tower — `assets/basic-tower.png`
+- [x] Cannon tower — `assets/cannon.png`
+- [x] Goblin spritesheet (8 frames, 4x2 grid) — `assets/processed/goblin_sheet.png`
+- [x] Basic bullet (arrow) — `assets/arrow-basic.png`
+- [x] Cannonball — `assets/cannonball.png`
+- [x] Castle (3-frame spritesheet: intact/damaged/destroyed) — `assets/castle-sprite.png`
+- [x] Path tile (vertical) — `assets/processed/path_tile.png`
+- [x] Placement spot — `assets/placement.png`
+- [x] Floor tile (stone dungeon) — `assets/processed/floor_tile.png`
+- [x] Boggle letter tile — `assets/processed/letter_tile.png`
+- [x] Heart icon — `assets/heart.png`
+
+### Still Needed
+- [ ] Dungeon wall tile (horizontal, seamless) — for Moonlighter-style word phase room walls
+- [ ] Dungeon wall corner tile — corner piece for room walls
+- [ ] Window/torch wall decoration — wall detail sprites for visual interest
+
+---
+
+## New Prompts: Dungeon Room Walls
+
+### Dungeon Wall Tile - Horizontal (256x72)
+```
+A horizontal seamless stone dungeon wall viewed from above at a slight angle showing
+depth, pixel art style, dark purple-gray stone bricks with mortar lines, fantasy
+medieval theme, Moonlighter game aesthetic, moody and atmospheric, dark color palette
+with subtle blue-purple tones, seamless tileable horizontally, 2D game sprite,
+256x72 pixels
+```
+
+### Dungeon Wall Tile - Vertical (72x256)
+```
+A vertical seamless stone dungeon wall viewed from above at a slight angle showing
+depth, pixel art style, dark purple-gray stone bricks with mortar lines, fantasy
+medieval theme, Moonlighter game aesthetic, moody and atmospheric, dark color palette
+with subtle blue-purple tones, seamless tileable vertically, 2D game sprite,
+72x256 pixels
+```
+
+### Dungeon Wall Corner (72x72)
+```
+A corner piece of a stone dungeon wall viewed from above, pixel art style, dark
+purple-gray stone bricks forming an L-shaped corner, fantasy medieval theme,
+Moonlighter game aesthetic, thicker pillar-like construction at the corner joint,
+dark color palette, solid bright magenta (#FF00FF) background outside the corner,
+2D game sprite, 72x72 pixels
+```
+
+### Dungeon Floor Tile (64x64)
+```
+A dark stone dungeon floor tile viewed from directly above, pixel art style, fantasy
+medieval theme, dark teal-green cobblestone with subtle cracks and moss, Moonlighter
+game aesthetic, moody atmospheric coloring, seamless tileable, 2D game sprite,
+64x64 pixels
+```
+
+### Wall Torch / Sconce (32x48)
+```
+A wall-mounted torch or sconce viewed from above casting a warm glow, pixel art style,
+fantasy medieval theme, iron bracket holding a flickering flame, warm orange light
+pool beneath, solid bright magenta (#FF00FF) background, 2D game sprite, 32x48 pixels
+```

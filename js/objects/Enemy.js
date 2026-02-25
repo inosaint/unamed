@@ -35,14 +35,17 @@ Game.Enemy = function (scene, path, speed, hp) {
     this.alive = true;
     this._slowed = false;
 
-    // Scale down: goblin frames are 692x745, display at ~48px tall
-    this.setScale(48 / 745);
+    // Scale down: goblin frames are 704x768, display at ~48px tall
+    this.setScale(48 / 768);
 
     this.setDepth(8);
     scene.add.existing(this);
 
-    // Start the walk cycle animation (all 8 frames looping)
-    this.anims.play('goblin-walk', true);
+    // Track current direction for animation
+    this._dir = 'down';
+
+    // Start the front-facing walk cycle
+    this.anims.play('goblin-walk-down', true);
 
     // HP bar
     this.hpBar = scene.add.graphics();
@@ -61,6 +64,7 @@ Game.Enemy.prototype.update = function (delta) {
     if (!this.alive) { return false; }
 
     var prevX = this.x;
+    var prevY = this.y;
 
     var distanceToMove = this.speed * (delta / 1000);
     var totalLength = this.path.getTotalLength();
@@ -76,12 +80,33 @@ Game.Enemy.prototype.update = function (delta) {
     this.x = pos.x;
     this.y = pos.y;
 
-    // Flip sprite when moving left
+    // Update directional animation based on movement
     var dx = this.x - prevX;
-    if (dx < -0.5) {
-        this.setFlipX(true);
-    } else if (dx > 0.5) {
-        this.setFlipX(false);
+    var dy = this.y - prevY;
+    var absDx = Math.abs(dx);
+    var absDy = Math.abs(dy);
+
+    if (absDx > 0.5 || absDy > 0.5) {
+        var newDir;
+        if (absDx > absDy) {
+            // Moving horizontally
+            newDir = dx > 0 ? 'right' : 'left';
+        } else {
+            // Moving vertically
+            newDir = dy > 0 ? 'down' : 'up';
+        }
+
+        if (newDir !== this._dir) {
+            this._dir = newDir;
+            this.setFlipX(false);
+            if (newDir === 'down' || newDir === 'up') {
+                this.anims.play('goblin-walk-down', true);
+            } else if (newDir === 'left') {
+                this.anims.play('goblin-walk-left', true);
+            } else if (newDir === 'right') {
+                this.anims.play('goblin-walk-right', true);
+            }
+        }
     }
 
     this.updateHPBar();

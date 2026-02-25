@@ -63,6 +63,9 @@ Game.Tower = function (scene, x, y, towerType) {
      */
     this.splashRadius = data.splashRadius || 0;
 
+    // Display towers at 80px tall regardless of source sprite size
+    this.setDisplaySize(80, 80);
+
     // Ensure the tower renders above the path
     this.setDepth(10);
 

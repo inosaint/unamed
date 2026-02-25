@@ -56,6 +56,9 @@ Game.Bullet = function (scene, x, y, target, damage, splashRadius) {
      */
     this.alive = true;
 
+    // Display bullets at 24px regardless of source sprite size
+    this.setDisplaySize(24, 24);
+
     // Render above towers and enemies
     this.setDepth(12);
 

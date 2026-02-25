@@ -38,8 +38,8 @@ Game.BootScene = class BootScene extends Phaser.Scene {
 
         // Enemy (directional spritesheet: 4 cols x 2 rows = 8 frames)
         this.load.spritesheet('goblin', base + 'goblin_sheet.png', {
-            frameWidth: 692,
-            frameHeight: 745
+            frameWidth: 704,
+            frameHeight: 768
         });
 
         // Projectiles
@@ -48,7 +48,12 @@ Game.BootScene = class BootScene extends Phaser.Scene {
 
         // Map elements
         this.load.image('placement_spot', base + 'placement_spot.png');
-        this.load.image('path_tile', base + 'path_tile.png');
+        this.load.image('path_straight_h', base + 'path_straight_h.png');
+        this.load.image('path_straight_v', base + 'path_straight_v.png');
+        this.load.image('path_corner_tr', base + 'path_corner_tr.png');
+        this.load.image('path_corner_tl', base + 'path_corner_tl.png');
+        this.load.image('path_corner_br', base + 'path_corner_br.png');
+        this.load.image('path_corner_bl', base + 'path_corner_bl.png');
         this.load.image('grass', base + 'grass.png');
 
         // Word phase
@@ -63,6 +68,7 @@ Game.BootScene = class BootScene extends Phaser.Scene {
 
         // UI
         this.load.image('heart', base + 'heart.png');
+        this.load.image('gold', base + 'gold.png');
     }
 
     /* ------------------------------------------------------------------ */
@@ -81,8 +87,12 @@ Game.BootScene = class BootScene extends Phaser.Scene {
         console.log('[BootScene] Initialising registry...');
         this._initRegistry();
 
-        console.log('[BootScene] Boot complete. Starting WordPhaseScene.');
-        this.scene.start('WordPhaseScene');
+        console.log('[BootScene] Waiting for fonts...');
+        var self = this;
+        document.fonts.load('16px "Press Start 2P"').then(function () {
+            console.log('[BootScene] Fonts loaded. Starting WordPhaseScene.');
+            self.scene.start('WordPhaseScene');
+        });
     }
 
     /* ------------------------------------------------------------------ */
@@ -97,15 +107,31 @@ Game.BootScene = class BootScene extends Phaser.Scene {
     /*  Animation definitions                                              */
     /* ------------------------------------------------------------------ */
     _createAnimations() {
-        // Goblin walk cycle: all 8 frames in sequence
-        // Frames 0-3: front-facing walk, 4: front stance,
-        // 5: left profile, 6: back view, 7: right profile
+        // Goblin front-facing walk cycle (frames 0-3)
         this.anims.create({
-            key: 'goblin-walk',
+            key: 'goblin-walk-down',
             frames: this.anims.generateFrameNumbers('goblin', {
-                start: 0, end: 7
+                start: 0, end: 3
             }),
             frameRate: 8,
+            repeat: -1
+        });
+        // Goblin left-facing walk cycle (frames 4, 6)
+        this.anims.create({
+            key: 'goblin-walk-left',
+            frames: this.anims.generateFrameNumbers('goblin', {
+                frames: [4, 6]
+            }),
+            frameRate: 6,
+            repeat: -1
+        });
+        // Goblin right-facing walk cycle (frames 5, 7)
+        this.anims.create({
+            key: 'goblin-walk-right',
+            frames: this.anims.generateFrameNumbers('goblin', {
+                frames: [5, 7]
+            }),
+            frameRate: 6,
             repeat: -1
         });
     }
